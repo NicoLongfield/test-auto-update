@@ -1,0 +1,92 @@
+{
+  "private": true,
+  "name": "my-nextron-app",
+  "description": "My application description",
+  "version": "1.0.0",
+  "author": "Yoshihide Shiono <shiono.yoshihide@gmail.com>",
+  "main": "app/background.js",
+  "build": {
+    "appId": "com.medomicslab.medapp",
+    "productName": "MEDomicsLab",
+    "artifactName": "${productName}-${version}-${os}.${ext}",
+    "directories": {
+      "output": "build/dist"
+    },
+    "files": [
+      "app/**/*",
+      "node_modules/**/*",
+      "resources/**/*"
+    ],
+    "extraResources": [
+      "./pythonCode/**/*",
+      "./baseFiles/**/*",
+      "./go_executables/**/*",
+      "./pythonEnv/**/*",
+      "!./pythonCode/venv/**/*",
+      "!./pythonCode/.idea/**/*",
+      "!*.git/**/*"
+    ],
+    "asarUnpack": [
+      "./pythonCode/**/*",
+      "./baseFiles/**/*",
+      "./go_executables/**/*"
+    ],
+    "extends": null,
+    "mac": {
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip",
+        "pkg"
+      ],
+      "notarize": {
+        "teamId": "5ML683U677"
+      }
+    },
+    "pkg": {
+      "isRelocatable": false
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "app/assets/icon.ico"
+    },
+    "nsis": {},
+    "linux": {
+      "target": "deb",
+      "icon": "resources/icons",
+      "maintainer": "medomicslab.udes@gmail.com"
+    },
+    "deb": {
+      "afterInstall": "build/after-install.sh"
+    },
+    "afterAllArtifactBuild": "build/afterAllArtifactBuild.js",
+    "publish": {
+      "provider": "github",
+      "owner": "NicoLongfield",
+      "repo": "MEDomicsLab_Automation",
+      "releaseType": "draft"
+    }
+  },
+  "scripts": {
+    "dev": "nextron",
+    "build": "nextron build",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "electron-serve": "^1.3.0",
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "electron": "^34.0.0",
+    "electron-builder": "^24.13.3",
+    "next": "^14.2.4",
+    "nextron": "^9.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

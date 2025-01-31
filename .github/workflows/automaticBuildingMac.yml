@@ -1,0 +1,191 @@
+name: Full build and publish with versioning
+on:
+  push:
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+permissions:
+  contents: write
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    # runs-on: self-hosted
+    # env:
+    #   APPLE_ID: ${{ secrets.APPLE_ID }}
+    #   APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+    #   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0 # Fetch full history for branches
+
+      - name: Keys and certificates
+        env:
+          APPLE_CERT_DATA: ${{ secrets.CSC_INSTALLER_LINK }}
+          APPLE_CERT_PASSWORD: ${{ secrets.CSC_INSTALLER_KEY_PASSWORD }}
+          DEVELOPER_APP_CER: ${{ secrets.CSC_LINK}}
+          DEVELOPER_APP_KEY: ${{ secrets.CSC_KEY_PASSWORD }}
+
+          # echo ${{ secrets.APPLE_CERT_DATA }} | base64 --decode > certificate_installer.cer
+          # echo ${{ secrets.APPLE_CERT_PASSWORD }} | base64 --decode > certificate_installer.key
+          # echo ${{ secrets.DEVELOPER_APP_CER }} | base64 --decode > certificate_application.cer
+          # echo ${{ secrets.DEVELOPER_APP_KEY }} | base64 --decode > certificate_application.key
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          echo -n "$APPLE_CERT_DATA" | base64 --decode -o certificate_installer.p12
+          echo -n "$DEVELOPER_APP_CER" | base64 --decode -o certificate_application.p12
+
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "${{ secrets.CSC_KEY_PASSWORD }}" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "${{ secrets.CSC_KEY_PASSWORD }}" $KEYCHAIN_PATH
+
+          security import certificate_installer.p12 -P "${{ secrets.CSC_KEY_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security import certificate_application.p12 -P "${{ secrets.CSC_KEY_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Store as a keychain profile (for signing)
+
+      - name: keychain profile
+        env:
+          APPLE_NOTARY_USER: ${{ secrets.APPLE_ID }}
+          APPLE_NOTARY_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool store-credentials "notarytool-password" --apple-id "$APPLE_NOTARY_USER" --team-id "$APPLE_TEAM_ID" --password "$APPLE_NOTARY_PASSWORD"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.20.6
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Update version
+        run: |
+          node -p "let pkg=require('./package.json'); pkg.version='${GITHUB_REF/refs\/tags\//}'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+          echo "Version updated to ${GITHUB_REF/refs\/tags\//}"
+
+      # Before building the app, allocate more memory to the shell
+      - name: Allocate more memory
+        run: export NODE_OPTIONS=--max-old-space-size=8192
+
+      - name: Get tag name
+        id: get-tag
+        run: |
+          VERSION=${GITHUB_REF/refs\/tags\//}
+          echo "::set-output name=VERSION::${VERSION#v}"
+
+      - name: dotenv file
+        run: |
+          echo "DEVELOPER_ID_APP='${{ secrets.DEVELOPER_ID_APP }}'" >> .env
+          echo "DEVELOPER_ID_INSTALLER='${{ secrets.DEVELOPER_ID_INSTALLER }}'" >> .env
+
+      - name: Build for Mac
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_INSTALLER_LINK: ${{ secrets.CSC_INSTALLER_LINK }}
+          CSC_INSTALLER_KEY_PASSWORD: ${{ secrets.CSC_INSTALLER_KEY_PASSWORD }}
+        run: |
+          npm run build
+
+      - name: notarize
+        env:
+          VERSION: ${{ steps.get-tag.outputs.VERSION }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit build/dist/MEDomicsLab-${{ env.VERSION }}-mac-signed.pkg --keychain-profile "notarytool-password"  --wait
+          # Staple the notarization ticket to the app
+          xcrun stapler staple build/dist/MEDomicsLab-${{ env.VERSION }}-mac-signed.pkg
+
+      - name: Archive Mac
+        uses: actions/upload-artifact@v3
+        with:
+          name: mac-built-pkg
+          # path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-signed.pkg
+          path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-mac-signed.pkg
+        env:
+          VERSION: ${{ steps.get-tag.outputs.VERSION }}
+
+      - name: Archive Mac DMG
+        uses: actions/upload-artifact@v3
+        with:
+          name: mac-built-dmg
+          # path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-signed.pkg
+          path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-mac.dmg
+        env:
+          VERSION: ${{ steps.get-tag.outputs.VERSION }}
+
+      - name: Archive Mac DMG
+        uses: actions/upload-artifact@v3
+        with:
+          name: mac-built-zip
+          # path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-signed.pkg
+          path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-mac.zip
+        env:
+          VERSION: ${{ steps.get-tag.outputs.VERSION }}
+      # - name: Folder tree
+      #   run: ls -R
+
+  # Publish to GitHub
+  publish:
+    needs: [build-mac]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # - name: Download Mac
+      #   uses: actions/download-artifact@v3
+      #   with:
+      #     name: mac-built
+      #     # name: mac-signed
+      - name: Get tag name
+        id: get-tag
+        run: |
+          VERSION=${GITHUB_REF/refs\/tags\//}
+          echo "::set-output name=VERSION::${VERSION#v}"
+
+      - name: Download Mac PKG
+        uses: actions/download-artifact@v3
+        with:
+          name: mac-built-pkg
+          # name: mac-signed
+      - name: Download Mac DMG
+        uses: actions/download-artifact@v3
+        with:
+          name: mac-built-dmg
+          # name: mac-signed
+      - name: Download Mac ZIP
+        uses: actions/download-artifact@v3
+        with:
+          name: mac-built-zip
+          # name: mac-signed
+
+      - name: Publish to GitHub
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./MEDomicsLab-${{ env.VERSION }}-mac-signed.pkg
+            ./MEDomicsLab-${{ env.VERSION }}-mac.dmg
+            ./MEDomicsLab-${{ env.VERSION }}-mac.zip
+          name: MEDomicsLab-${{ env.VERSION }}
+          body: |
+            MEDomicsLab-${{ env.VERSION }}
+            This is a full release of MEDomicsLab. This release includes the MEDomicsLab application and the Python environment.
+            Refer to the [Documentation](https://medomics-udes.gitbook.io/medomicslab-docs/)
+            ${{ github.ref }}
+          draft: true
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          VERSION: ${{ steps.get-tag.outputs.VERSION }}

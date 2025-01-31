@@ -1,0 +1,23 @@
+appId: com.example.nextron
+buildVersion: 1.0.0
+productName: My Nextron App
+artifactName: "TestApp-${version}-${os}-${arch}.${ext}"
+copyright: Copyright © 2018 Yoshihide Shiono
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - from: .
+    filter:
+      - package.json
+      - app
+extraFiles:
+  - scripts
+mac:
+  target: ["dmg", "zip", "pkg"]
+  icon: resources/icon.icns
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+publish: null
