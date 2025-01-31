@@ -108,29 +108,32 @@ jobs:
           xcrun stapler staple build/dist/MEDomicsLab-${{ env.VERSION }}-mac-signed.pkg
 
       - name: Archive Mac
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mac-built-pkg
           # path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-signed.pkg
           path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-mac-signed.pkg
+          compression-level: 0
         env:
           VERSION: ${{ steps.get-tag.outputs.VERSION }}
 
       - name: Archive Mac DMG
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mac-built-dmg
           # path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-signed.pkg
           path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-mac.dmg
+          compression-level: 0
         env:
           VERSION: ${{ steps.get-tag.outputs.VERSION }}
 
       - name: Archive Mac DMG
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mac-built-zip
           # path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-signed.pkg
           path: ./build/dist/MEDomicsLab-${{ env.VERSION }}-mac.zip
+          compression-level: 0
         env:
           VERSION: ${{ steps.get-tag.outputs.VERSION }}
       # - name: Folder tree
@@ -156,17 +159,17 @@ jobs:
           echo "::set-output name=VERSION::${VERSION#v}"
 
       - name: Download Mac PKG
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mac-built-pkg
           # name: mac-signed
       - name: Download Mac DMG
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mac-built-dmg
           # name: mac-signed
       - name: Download Mac ZIP
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mac-built-zip
           # name: mac-signed
