@@ -67,7 +67,7 @@
     "publish": {
       "provider": "github",
       "owner": "NicoLongfield",
-      "repo": "MEDomicsLab_Automation",
+      "repo": "test-auto-update",
       "releaseType": "draft"
     }
   },
