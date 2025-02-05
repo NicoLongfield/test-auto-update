@@ -18,6 +18,7 @@
       "resources/**/*"
     ],
     "extraResources": [
+      "scripts/**/*",
       "./pythonCode/**/*",
       "./baseFiles/**/*",
       "./go_executables/**/*",
