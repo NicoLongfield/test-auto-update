@@ -6,8 +6,8 @@
   "author": "Yoshihide Shiono <shiono.yoshihide@gmail.com>",
   "main": "app/background.js",
   "build": {
-    "appId": "com.medomicslab.medapp",
-    "productName": "MEDomicsLab",
+    "appId": "com.test-update.medapp",
+    "productName": "TestUpdate",
     "artifactName": "${productName}-${version}-${os}.${ext}",
     "directories": {
       "output": "build/dist"
