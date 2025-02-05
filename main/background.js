@@ -3,8 +3,34 @@ import { exec } from 'child_process'
 import { app, ipcMain } from 'electron'
 import serve from 'electron-serve'
 import { createWindow } from './helpers'
+const { autoUpdater } = require('electron-updater')
+const log = require('electron-log');
 
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
 const isProd = process.env.NODE_ENV === 'production'
+
+autoUpdater.on('checking-for-update', () => {
+  sendStatusToWindow('Checking for update...');
+})
+autoUpdater.on('update-available', (info) => {
+  sendStatusToWindow('Update available.');
+})
+autoUpdater.on('update-not-available', (info) => {
+  sendStatusToWindow('Update not available.');
+})
+autoUpdater.on('error', (err) => {
+  sendStatusToWindow('Error in auto-updater. ' + err);
+})
+autoUpdater.on('download-progress', (progressObj) => {
+  let log_message = "Download speed: " + progressObj.bytesPerSecond;
+  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+  log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+  sendStatusToWindow(log_message);
+})
+autoUpdater.on('update-downloaded', (info) => {
+  sendStatusToWindow('Update downloaded');
+});
 
 async function startProcess(event, value) {
   if (event) {
@@ -50,6 +76,10 @@ if (isProd) {
   app.setPath('userData', `${app.getPath('userData')} (development)`)
 }
 
+app.on('ready', function () {
+  autoUpdater.checkForUpdatesAndNotify()
+})
+
 ;(async () => {
   await app.whenReady()
 
@@ -67,6 +97,7 @@ if (isProd) {
     const port = process.argv[2]
     await mainWindow.loadURL(`http://localhost:${port}/home`)
     mainWindow.webContents.openDevTools()
+
   }
 })()
 

@@ -1,0 +1,6 @@
+---
+publish:
+  provider: github
+  owner: NicoLongfield
+  repo: test-auto-update
+  releaseType: draft
