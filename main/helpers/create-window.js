@@ -72,6 +72,12 @@ export const createWindow = (windowName, options) => {
     },
   })
 
+  win.showMessage = (message) => {
+    win.webContents.send('logging', message)
+    console.log("[DEBUG] Message sent to renderer, message: ", message)
+  }
+
+
   win.on('close', saveState)
 
   return win

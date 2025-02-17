@@ -8,16 +8,32 @@ const log = require('electron-log');
 
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
+
 const isProd = process.env.NODE_ENV === 'production'
 
+var mainWindow;
+
+function sendStatusToWindow(text) {
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.showMessage(text);
+  }
+}
 autoUpdater.on('checking-for-update', () => {
+  console.log('DEBUG: checking for update')
   sendStatusToWindow('Checking for update...');
 })
 autoUpdater.on('update-available', (info) => {
-  sendStatusToWindow('Update available.');
+  console.log('DEBUG: update available')
+  sendStatusToWindow(`Update available. ${info}`);
+  let pth = autoUpdater.downloadUpdate()
+  console.log('DEBUG: pth:', pth)
+  sendStatusToWindow(`Downloading update... ${pth}`);
 })
 autoUpdater.on('update-not-available', (info) => {
-  sendStatusToWindow('Update not available.');
+  sendStatusToWindow(`Update not available. ${info}`);
 })
 autoUpdater.on('error', (err) => {
   sendStatusToWindow('Error in auto-updater. ' + err);
@@ -58,6 +74,8 @@ async function startProcess(event, value) {
       }
       event.sender.send('log', 'Python script executed successfully')
       event.sender.send('message', stdout)
+      sendStatusToWindow(stdout)
+      // event.sender.send('message', stdout)
     })
 
     // ~/.yourApp.log will be helpfull to log process in production mode
@@ -65,7 +83,8 @@ async function startProcess(event, value) {
 }
 
 ipcMain.on('run-sh', async (event, value) => {
-  console.log('DEBUG: starting process') // for dev mode
+  autoUpdater.checkForUpdatesAndNotify()
+  sendStatusToWindow('Checking for update...')
   event.sender.send('log', 'Running...') // for prod mode
   await startProcess(event, value)
 })
@@ -83,14 +102,14 @@ app.on('ready', function () {
 ;(async () => {
   await app.whenReady()
 
-  const mainWindow = createWindow('main', {
+  mainWindow = createWindow('main', {
     width: 1000,
     height: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
   })
-
+  
   if (isProd) {
     await mainWindow.loadURL('app://./home')
   } else {
