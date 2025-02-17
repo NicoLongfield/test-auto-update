@@ -26,6 +26,7 @@ autoUpdater.on('checking-for-update', () => {
   sendStatusToWindow('Checking for update...');
 })
 autoUpdater.on('update-available', (info) => {
+  info = JSON.stringify(info)
   console.log('DEBUG: update available')
   sendStatusToWindow(`Update available. ${info}`);
   let pth = autoUpdater.downloadUpdate()
@@ -33,7 +34,9 @@ autoUpdater.on('update-available', (info) => {
   sendStatusToWindow(`Downloading update... ${pth}`);
 })
 autoUpdater.on('update-not-available', (info) => {
+  info = JSON.stringify(info)
   sendStatusToWindow(`Update not available. ${info}`);
+  sendStatusToWindow(`Current version: ${app.getVersion()}`);
 })
 autoUpdater.on('error', (err) => {
   sendStatusToWindow('Error in auto-updater. ' + err);
