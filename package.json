@@ -71,7 +71,10 @@
       "owner": "NicoLongfield",
       "repo": "test-auto-update",
       "releaseType": "draft"
-    }
+    },
+    "extraFiles": [
+      "scripts"
+    ]
   },
   "scripts": {
     "dev": "nextron",
